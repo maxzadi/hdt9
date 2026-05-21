@@ -4,8 +4,8 @@ import java.util.Map;
 
 public class FloydWarshall {
 
-    private int[][] distances;
-    private String[][] paths;
+    private int[][] dist;
+    private int[][] next;
     private Graph graph;
     private final int INF;
 
@@ -17,25 +17,25 @@ public class FloydWarshall {
         int[][] matrix = graph.getMatrix();
         int n = graph.getCities().size();
 
-        distances = new int[n][n];
-        paths = new String[n][n];
+        dist = new int[n][n];
+        next = new int[n][n];
 
-        // Copiar matriz original
         for (int i = 0; i < n; i++) {
 
             for (int j = 0; j < n; j++) {
 
-                distances[i][j] = matrix[i][j];
+                dist[i][j] = matrix[i][j];
 
-                if (i != j && matrix[i][j] != INF) {
-                    paths[i][j] = getCityByIndex(j);
+                if (matrix[i][j] != INF && i != j) {
+                    next[i][j] = j;
                 } else {
-                    paths[i][j] = null;
+                    next[i][j] = -1;
                 }
 
             }
 
         }
+
     }
 
     /**
@@ -43,7 +43,7 @@ public class FloydWarshall {
      */
     public void floyd() {
 
-        int n = distances.length;
+        int n = dist.length;
 
         for (int k = 0; k < n; k++) {
 
@@ -51,14 +51,15 @@ public class FloydWarshall {
 
                 for (int j = 0; j < n; j++) {
 
-                    if (distances[i][k] != INF &&
-                        distances[k][j] != INF &&
-                        distances[i][k] + distances[k][j] < distances[i][j]) {
+                    if (dist[i][k] == INF || dist[k][j] == INF) {
+                        continue;
+                    }
 
-                        distances[i][j] =
-                                distances[i][k] + distances[k][j];
+                    if (dist[i][k] + dist[k][j] < dist[i][j]) {
 
-                        paths[i][j] = getCityByIndex(k);
+                        dist[i][j] = dist[i][k] + dist[k][j];
+
+                        next[i][j] = next[i][k];
                     }
 
                 }
@@ -70,73 +71,51 @@ public class FloydWarshall {
     }
 
     /**
-     * Obtiene la distancia mínima entre dos ciudades
+     * Obtiene distancia mínima
      */
     public int getDistance(String origin, String destination) {
 
-        Map<String, Integer> cities = graph.getCities();
+        int i = graph.getCities().get(origin);
+        int j = graph.getCities().get(destination);
 
-        int i = cities.get(origin);
-        int j = cities.get(destination);
-
-        return distances[i][j];
+        return dist[i][j];
     }
 
     /**
-     * Obtiene la ruta más corta
+     * Reconstruye la ruta más corta
      */
     public String shortestPath(String origin, String destination) {
 
-        Map<String, Integer> cities = graph.getCities();
+        int i = graph.getCities().get(origin);
+        int j = graph.getCities().get(destination);
 
-        int i = cities.get(origin);
-        int j = cities.get(destination);
-
-        if (distances[i][j] == INF) {
+        if (next[i][j] == -1) {
             return "No existe ruta.";
         }
 
-        List<String> route = new ArrayList<>();
+        List<String> path = new ArrayList<>();
 
-        route.add(origin);
+        path.add(origin);
 
-        buildPath(i, j, route);
+        while (i != j) {
 
-        return String.join(" -> ", route);
-    }
+            i = next[i][j];
 
-    /**
-     * Construye recursivamente la ruta
-     */
-    private void buildPath(int i, int j, List<String> route) {
-
-        String intermediate = paths[i][j];
-
-        if (intermediate == null) {
-
-            route.add(getCityByIndex(j));
-            return;
+            path.add(getCityByIndex(i));
         }
 
-        int k = graph.getCities().get(intermediate);
-
-        buildPath(i, k, route);
-
-        route.remove(route.size() - 1);
-
-        buildPath(k, j, route);
-
+        return String.join(" -> ", path);
     }
 
     /**
-     * Calcula el centro del grafo
+     * Calcula centro del grafo
      */
     public String graphCenter() {
 
-        int n = distances.length;
+        int n = dist.length;
 
         int minEccentricity = INF;
-        int centerIndex = -1;
+        int center = -1;
 
         for (int i = 0; i < n; i++) {
 
@@ -144,10 +123,10 @@ public class FloydWarshall {
 
             for (int j = 0; j < n; j++) {
 
-                if (distances[i][j] > eccentricity &&
-                    distances[i][j] != INF) {
+                if (dist[i][j] != INF &&
+                    dist[i][j] > eccentricity) {
 
-                    eccentricity = distances[i][j];
+                    eccentricity = dist[i][j];
                 }
 
             }
@@ -155,16 +134,16 @@ public class FloydWarshall {
             if (eccentricity < minEccentricity) {
 
                 minEccentricity = eccentricity;
-                centerIndex = i;
+                center = i;
             }
 
         }
 
-        return getCityByIndex(centerIndex);
+        return getCityByIndex(center);
     }
 
     /**
-     * Muestra matriz de distancias
+     * Imprime matriz de distancias
      */
     public void printDistances() {
 
@@ -186,16 +165,17 @@ public class FloydWarshall {
 
                 int j = graph.getCities().get(colCity);
 
-                if (distances[i][j] == INF) {
+                if (dist[i][j] == INF) {
                     System.out.printf("%15s", "INF");
                 } else {
-                    System.out.printf("%15d", distances[i][j]);
+                    System.out.printf("%15d", dist[i][j]);
                 }
 
             }
 
             System.out.println();
         }
+
     }
 
     /**
